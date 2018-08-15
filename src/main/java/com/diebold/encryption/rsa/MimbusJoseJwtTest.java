@@ -15,12 +15,17 @@ import org.bouncycastle.openssl.PEMParser;
 import org.bouncycastle.openssl.bc.BcPEMDecryptorProvider;
 import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
 
+import javax.crypto.Cipher;
 import java.io.*;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
+import java.security.Key;
 import java.security.KeyPair;
 import java.security.Security;
 import java.security.interfaces.RSAPublicKey;
 import java.text.ParseException;
+import java.util.Base64;
 import java.util.Date;
 import java.util.UUID;
 
@@ -112,12 +117,31 @@ public class MimbusJoseJwtTest {
     }
 
 
+    public static String encrypt(Key key, String text) throws IOException, GeneralSecurityException {
+        Cipher rsa = Cipher.getInstance("RSA");
+        rsa.init(Cipher.ENCRYPT_MODE, key);
+        return Base64.getEncoder().encodeToString(rsa.doFinal(text.getBytes(StandardCharsets.UTF_8)));
+    }
+
+    public static String decrypt(Key key, String encryptedText) throws IOException, GeneralSecurityException {
+        Cipher rsa = Cipher.getInstance("RSA");
+        rsa.init(Cipher.DECRYPT_MODE, key);
+        return new String(rsa.doFinal(Base64.getDecoder().decode(encryptedText)), StandardCharsets.UTF_8);
+    }
+
 
     public static void main(String[] args) throws Exception {
         URL resource = MimbusJoseJwtTest.class.getResource("/rsa/private.pem");
         //URL resource = MimbusJoseJwtTest.class.getResource("/rsa/private-des.pem");
 
         KeyPair keyPair = readPrivateKey(new FileReader(resource.getFile()));
+
+        String encriptPassword = encrypt(keyPair.getPublic(), "Wallace");
+        System.out.println(encriptPassword);
+
+        String decryptPassword = decrypt(keyPair.getPrivate(), encriptPassword);
+        System.out.println(decryptPassword);
+
 
         String accessToken = accessToken(keyPair);
         System.out.println("accessToken --> " + accessToken);
